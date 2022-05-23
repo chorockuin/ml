@@ -7,11 +7,11 @@ def visualize(tree, x, y):
     tree.fit(x, y)
     x_test = np.reshape(np.linspace(0.0, 40.0, 50), (-1, 1))
     pred_y = tree.predict(x_test)
-    plt.figure(figsize=(6,5))
+    plt.figure(figsize=(6, 5))
     plt.plot(x_test, pred_y, 'r-')
     plt.scatter(x[:, 0], y)
     plt.show()
-    plt.figure(figsize=(20,12))
+    plt.figure(figsize=(20, 12))
     plot_tree(tree)
     plt.show()
 

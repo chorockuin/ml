@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def plot_decision_boundary(model, x, y):
-    x_min, x_max = x[:, 0].min() - .5, x[:, 0].max() + .5
-    y_min, y_max = x[:, 1].min() - .5, x[:, 1].max() + .5
+    x_min, x_max = x[:, 0].min() - 0.5, x[:, 0].max() + 0.5
+    y_min, y_max = x[:, 1].min() - 0.5, x[:, 1].max() + 0.5
     h = .02
     xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
     z = model.predict(np.c_[xx.ravel(), yy.ravel()])
