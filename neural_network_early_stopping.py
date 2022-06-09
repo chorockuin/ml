@@ -33,26 +33,6 @@ class Model(tf.keras.Model):
 
 callback = tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0, patience=3, restore_best_weights=True)
 
-def loss_func(y, y_pred):
-    return tf.losses.sparse_categorical_crossentropy(y, y_pred)
-
-@tf.function
-def train_step(model, x, y, optimizer, train_loss, train_accuracy):
-    with tf.GradientTape() as t:
-        y_pred = model(x)
-        loss = loss_func(y, y_pred)
-    grads = t.gradient(loss, model.trainable_weights)
-    optimizer.apply_gradients(zip(grads, model.trainable_weights))
-    train_loss(loss)
-    train_accuracy(y, y_pred)
-
-@tf.function
-def valid_step(model, x, y, valid_loss, valid_accuracy):
-    y_pred = model(x)
-    loss = loss_func(y, y_pred)
-    valid_loss(loss)
-    valid_accuracy(y, y_pred)
-
 model = Model()
 
 model.compile(optimizer=tf.optimizers.Adam(), loss='sparse_categorical_crossentropy')
