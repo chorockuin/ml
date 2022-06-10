@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+
+# https://www.kaggle.com/austinreese/craigslist-carstrucks-data?select=vehicles.csv
+
 # df = pd.read_csv('data/vehicles.csv')
 df = pd.DataFrame({'name': ['ji', 'kim', 'song', 'yi', 'jang', 'min', 'yang', 'jo'], 
                    'region': ['seoul', 'busan', 'seoul', 'seoul', 'busan', 'gwangju', np.nan, 'kangwon']})

@@ -3,6 +3,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import zscore
 
+# https://www.kaggle.com/austinreese/craigslist-carstrucks-data?select=vehicles.csv
+
 df = pd.read_csv('data/vehicles.csv')
 
 q3 = df['price'].quantile(0.75)
