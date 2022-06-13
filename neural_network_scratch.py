@@ -12,6 +12,7 @@ x, y = make_classification(n_samples=100,
                            class_sep=2.0)
 
 plt.scatter(x[:, 0], x[:, 1], c=y)
+plt.show()
 
 for _x, _y in zip(x, y):
     print(_x, _x.shape, _y, _y.shape)
