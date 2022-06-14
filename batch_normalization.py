@@ -22,7 +22,8 @@ class DenseBnRelu(tf.keras.layers.Layer):
     def __init__(self, feature_size):
         super().__init__()
         self.dense = tf.keras.layers.Dense(feature_size)
-        self.bn = tf.keras.layers.BatchNormalization(axis=-1) # feature_size x batch_size(axis=-1), feature_size x height x width x channel_size(axis=-1)
+        # feature_size x batch_size(axis=-1), feature_size x height x width x channel_size(axis=-1)
+        self.bn = tf.keras.layers.BatchNormalization(axis=-1) 
         self.relu = tf.keras.layers.ReLU()
 
     def call(self, x, training=False):
