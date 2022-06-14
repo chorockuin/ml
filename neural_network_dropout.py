@@ -1,5 +1,8 @@
 from multiprocessing.dummy import active_children
 import tensorflow as tf
+import matplotlib.pyplot as plt
+import numpy as np
+
 mnist = tf.keras.datasets.mnist
 
 (x, y), _ = mnist.load_data()
@@ -41,7 +44,42 @@ class Model(tf.keras.Model):
         x = self.dropout3(x)
         return self.dense4(x)
 
-model = Model(0.5)
+hists = []
+for _ in range(1):
+    model = Model()
+    model.compile(optimizer=tf.keras.optimizers.SGD(0.01), loss=tf.keras.losses.SparseCategoricalCrossentropy())
+    hist = model.fit(train_data, epochs=50, validation_data=valid_data)
+    hists.append(hist)
 
-model.compile(optimizer=tf.optimizers.Adam(), loss='sparse_categorical_crossentropy')
-model.fit(train_data, epochs=16, validation_data=valid_data)
+hists_dropout = []
+for _ in range(1):
+    model_dropout = Model(dropout_rate=0.5)
+    model_dropout.compile(optimizer=tf.keras.optimizers.SGD(0.01), loss=tf.keras.losses.SparseCategoricalCrossentropy())
+    hist_dropout = model_dropout.fit(train_data, epochs=50, validation_data=valid_data)
+    hists_dropout.append(hist_dropout)
+
+iters = len(hists)
+epochs = len(hist.epoch)
+train_loss = np.zeros((epochs,))
+valid_loss = np.zeros((epochs,))
+
+for h in hists:
+    train_loss += np.array(h.history['loss']) / iters
+    valid_loss += np.array(h.history['val_loss']) / iters
+
+train_dropout_loss = np.zeros((epochs,))
+valid_dropout_loss = np.zeros((epochs,))
+for h in hists_dropout:
+    train_dropout_loss += np.array(h.history['loss']) / iters
+    valid_dropout_loss += np.array(h.history['val_loss']) / iters
+
+plt.plot(train_loss, 'r-', label='dropout=0.0')
+plt.plot(valid_loss, 'r--')
+plt.plot(train_dropout_loss, 'b-', label='dropout=0.5')
+plt.plot(valid_dropout_loss, 'b--')
+plt.legend()
+plt.show()
+
+# model = Model(0.5)
+# model.compile(optimizer=tf.optimizers.Adam(), loss='sparse_categorical_crossentropy')
+# model.fit(train_data, epochs=16, validation_data=valid_data)

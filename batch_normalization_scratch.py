@@ -74,7 +74,7 @@ for epoch in range(10):
     for x, y in valid_data:
         valid_step(model, x, y, valid_loss, valid_accuracy)
     
-    print(f'Epoch{epoch + 1} : train_loss: {train_loss.result()}, train_acc: {train_accuracy.result()}, valid_loss: {valid_loss.result()}, valid_acc: {valid_accuracy.result()}')
+    print(f'epoch{epoch + 1} : train_loss: {train_loss.result()}, train_acc: {train_accuracy.result()}, valid_loss: {valid_loss.result()}, valid_acc: {valid_accuracy.result()}')
 
     train_loss.reset_state()
     train_accuracy.reset_state()
