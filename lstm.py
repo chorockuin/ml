@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 num_words = 2000
 maxlen = 100

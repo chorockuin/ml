@@ -7,7 +7,7 @@ import pandas as pd
 df = pd.DataFrame({'name': ['ji', 'kim', 'song', 'yi', 'jang', 'min', 'yang', 'jo'], 
                    'region': ['seoul', 'busan', 'seoul', 'seoul', 'busan', 'gwangju', np.nan, 'kangwon']})
 print(df)
-# drop_first : one class is decided, so no need to count
+# drop_first : remaining one class has already been decided, so no need to count
 # dummy_na : count np.nan
 df_region = pd.get_dummies(df['region'], drop_first=True, dummy_na=True)
 print(df_region)

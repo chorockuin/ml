@@ -59,6 +59,7 @@ print(x_test[0].shape)
 x_test0 = x_test[0][np.newaxis, ...] + np.random.normal(scale=0.2, size=(1, 28, 28))
 print(x_test0.shape)
 plt.imshow((x_test0[0] + 1.0) / 2.0, cmap=plt.cm.binary_r)
+plt.show()
 
 test_model = tf.keras.Sequential([
     tf.keras.layers.Flatten(),

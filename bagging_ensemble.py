@@ -12,6 +12,7 @@ df = iris['data']
 x = df[['sepal length (cm)', 'sepal width (cm)']]
 y = iris['target']
 
+# bootstrap or pasting
 bc = BaggingClassifier(base_estimator=SVC(), n_estimators=10, n_jobs=-1)
 bc.fit(x, y)
 

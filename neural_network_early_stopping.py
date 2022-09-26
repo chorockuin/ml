@@ -1,5 +1,7 @@
 from multiprocessing.dummy import active_children
 import tensorflow as tf
+import matplotlib.pyplot as plt
+
 mnist = tf.keras.datasets.mnist
 
 (x, y), _ = mnist.load_data()
@@ -37,3 +39,7 @@ model = Model()
 
 model.compile(optimizer=tf.optimizers.Adam(), loss='sparse_categorical_crossentropy')
 model.fit(train_data, epochs=100, validation_data=valid_data, callbacks=[callback])
+
+plt.plot(model.history.history['loss'])
+plt.plot(model.history.history['val_loss'])
+plt.show()

@@ -18,6 +18,7 @@ tree.fit(x, y)
 plt.title('decision tree')
 util.plot_decision_boundary(tree, x.values, y)
 
+# data: bagging / feature: pasting
 rf = RandomForestClassifier()
 rf.fit(x, y)
 

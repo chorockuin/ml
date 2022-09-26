@@ -82,3 +82,4 @@ for x_batch, y_batch in test_data:
     test_accuracy(y_batch, y_pred)
 
 print(f'test_accuracy:{test_accuracy.result()}')
+test_accuracy.reset_state()
