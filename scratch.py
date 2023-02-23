@@ -21,8 +21,16 @@ def softmax(x):
 
 # loss functions
 def cross_entropy_error(y, t): # 1차원, one-hot encoding된 데이터
-    delta = 1e-7
-    return -np.sum(t * np.log(y + delta)) # y가 0이면 계산이 안됨. 따라서 아주 작은 값 delta를 더해줌
+    if y.ndim == 1:
+        t = t.reshape(1, t.size)
+        y = y.reshape(1, y.size)
+        
+    # 훈련 데이터가 원-핫 벡터라면 정답 레이블의 인덱스로 반환
+    if t.size == y.size:
+        t = t.argmax(axis=1)
+             
+    batch_size = y.shape[0]
+    return -np.sum(np.log(y[np.arange(batch_size), t] + 1e-7)) / batch_size    
 
 def CRE_batch(y, t): # 다차원, one-hot encoding된 데이터
     delta = 1e-7
@@ -42,21 +50,32 @@ def CRE_batch_onehot_index(y, t): # 다차원, t 값 데이터가 one-hot encodi
     return -np.sum(np.log(y[np.arange(batch_size), t] + delta)) / batch_size
 
 # gradient
-def numerical_gradient(f, x):
-    h = 1e-4
+def _numerical_gradient_1d(f, x):
+    h = 1e-4 # 0.0001
     grad = np.zeros_like(x)
-    for i in range(x.shape[0]):
-        tmp = x[i]
-        x[i] = tmp + h
-        x_plus_h = f(x)
-        
-        x[i] = tmp - h
-        x_minus_h = f(x)
-        
-        grad[i] = (x_plus_h - x_minus_h) / (2 * h)
-        x[i] = tmp
-    return grad
     
+    for idx in range(x.size):
+        tmp_val = x[idx]
+        x[idx] = float(tmp_val) + h
+        fxh1 = f(x) # f(x+h)
+        
+        x[idx] = tmp_val - h 
+        fxh2 = f(x) # f(x-h)
+        grad[idx] = (fxh1 - fxh2) / (2*h)
+        
+        x[idx] = tmp_val # 값 복원    
+    return grad
+
+def numerical_gradient_2d(f, X):
+    if X.ndim == 1:
+        return _numerical_gradient_1d(f, X)
+    else:
+        grad = np.zeros_like(X)
+        
+        for idx, x in enumerate(X):
+            grad[idx] = _numerical_gradient_1d(f, x)        
+        return grad
+
 def gradient_descent(f, init_x, lr=0.01, step_num=100):
     x = init_x
     for i in range(step_num):
@@ -145,10 +164,10 @@ class TwoLayerNet:
         loss_w = lambda w: self.loss(x, t)
         
         grads = {}
-        grads['w1'] = numerical_gradient(loss_w, self.params['w1'])
-        grads['b1'] = numerical_gradient(loss_w, self.params['b1'])
-        grads['w2'] = numerical_gradient(loss_w, self.params['w2'])
-        grads['b2'] = numerical_gradient(loss_w, self.params['b2'])
+        grads['w1'] = numerical_gradient_2d(loss_w, self.params['w1'])
+        grads['b1'] = numerical_gradient_2d(loss_w, self.params['b1'])
+        grads['w2'] = numerical_gradient_2d(loss_w, self.params['w2'])
+        grads['b2'] = numerical_gradient_2d(loss_w, self.params['b2'])
         return grads
         
 def test_two_layer_net():
@@ -159,51 +178,67 @@ def test_two_layer_net():
     y = net.predict(x)
     grads = net.numerical_gradient(x, t)
     
-# # test_mini_batch()
-# import load_mnist
+# test_mini_batch()
+import load_mnist
+import matplotlib.pyplot as plt
 
-# def test_mini_batch():
-#     (x_train, t_train), (x_test, t_test) = load_mnist.load_mnist(normalize=True, one_hot_label=True)
-#     # x_train = (60000, 784)
-#     # t_train = (60000, 10)
-#     # x_test = (10000, 784)
-#     # t_train = (10000, 10)
+def test_mini_batch():
+    (x_train, t_train), (x_test, t_test) = load_mnist.load_mnist(normalize=True, one_hot_label=True)
+    # x_train = (60000, 784)
+    # t_train = (60000, 10)
+    # x_test = (10000, 784)
+    # t_train = (10000, 10)
 
-#     train_loss_list = []
-#     train_acc_list = []
-#     test_acc_list = []
+    net = TwoLayerNet(input_size=784, hidden_size=50, output_size=10)
 
-#     train_size = x_train.shape[0] # 60000
-#     batch_size = 100
-#     learning_rate = 0.1
-#     epoch = 10
-#     # iter = max(train_size / batch_size, 1) # 60000 / 100 = 600
-#     iter = 10
+    iters_num = 10000
+    train_size = x_train.shape[0] # 60000
+    batch_size = 100
+    learning_rate = 0.1
 
-#     net = TwoLayerNet(input_size=784, hidden_size=100, output_size=10)
-#     for e in range(epoch): # 4번
-#         for i in range(iter): # np.random.choice 때문에 모든 train 데이터를 사용하는 것은 아니지만, 그래도 60000개 개수는 맞추자
-#             batch_indexes = np.random.choice(train_size, batch_size) # 100 indexes
-#             x_batch = x_train[batch_indexes] # 100
-#             t_batch = t_train[batch_indexes] # 100
-            
-#             grad = net.numerical_gradient(x_batch, t_batch) # 손실함수에 대해 가중치 편미분해서 기울기 얻음
-            
-#             for k in ('w1', 'b1', 'w2', 'b2'):
-#                 net.params[k] -= learning_rate * grad[k] # 기울기 * 학습률 만큼 파라미터 업데이트
+    train_loss_list = []
+    train_acc_list = []
+    test_acc_list = []
 
-#             loss = net.loss(x_batch, t_batch) # loss 구함
-#             train_loss_list.append(loss)
-#             print(f'train_loss:{loss}')
-#         train_acc = net.accuracy(x_train, t_train)
-#         test_acc = net.accuracy(x_test, t_test)
-#         train_acc_list.append(train_acc)
-#         test_acc_list.append(test_acc)
-#         print(f'batch_size:{batch_size}, epoch:{e}, train acc:{train_acc} test acc:{test_acc}')
+    iter_per_epoch = max(train_size / batch_size, 1) # 1 epoch = 모든 데이터를 1회 학습
+
+    for i in range(iters_num):
+        batch_indexes = np.random.choice(train_size, batch_size) # 100 indexes
+        x_batch = x_train[batch_indexes] # 100
+        t_batch = t_train[batch_indexes] # 100
+        
+        grad = net.numerical_gradient(x_batch, t_batch) # 손실함수에 대해 가중치 편미분해서 기울기 얻음
+        
+        for k in ('w1', 'b1', 'w2', 'b2'):
+            net.params[k] -= learning_rate * grad[k] # 기울기 * 학습률 만큼 파라미터 업데이트
+
+        loss = net.loss(x_batch, t_batch) # loss 구함
+        train_loss_list.append(loss)
+        print(f'train_loss:{loss}')
+
+        if i % iter_per_epoch == 0:
+            train_acc = net.accuracy(x_train, t_train)
+            test_acc = net.accuracy(x_test, t_test)
+
+            train_acc_list.append(train_acc)
+            test_acc_list.append(test_acc)
+
+            print(f'batch_size:{batch_size}, iter:{i}, train acc:{train_acc} test acc:{test_acc}')
+
+    # 그래프 그리기
+    markers = {'train': 'o', 'test': 's'}
+    x = np.arange(len(train_acc_list))
+    plt.plot(x, train_acc_list, label='train acc')
+    plt.plot(x, test_acc_list, label='test acc', linestyle='--')
+    plt.xlabel("epochs")
+    plt.ylabel("accuracy")
+    plt.ylim(0, 1.0)
+    plt.legend(loc='lower right')
+    plt.show()
 
 # test
-print(softmax(np.array([9, 2, 1, 1, 4, 3, 2])))
-test_cross_entropy_error()
-test_forward()
-test_two_layer_net()
-# test_mini_batch()
+# print(softmax(np.array([9, 2, 1, 1, 4, 3, 2])))
+# test_cross_entropy_error()
+# test_forward()
+# test_two_layer_net()
+test_mini_batch()
