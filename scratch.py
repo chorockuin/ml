@@ -50,38 +50,39 @@ def CRE_batch_onehot_index(y, t): # 다차원, t 값 데이터가 one-hot encodi
     return -np.sum(np.log(y[np.arange(batch_size), t] + delta)) / batch_size
 
 # gradient
-def _numerical_gradient_1d(f, x):
+def _numerical_gradient_1d(loss_f, w): # 가중치에 따라 loss가 어떻게 변하는지 loss를 가중치에 따라 편미분
     h = 1e-4 # 0.0001
-    grad = np.zeros_like(x)
+    grad = np.zeros_like(w)
     
-    for idx in range(x.size):
-        tmp_val = x[idx]
-        x[idx] = float(tmp_val) + h
-        fxh1 = f() # f(x+h)
+    # loss_f 내부에는 이미 사용할 x값과 t값이 정해져있다. w만 변경(w+h, w-h)해서 넣으면 됨
+    for idx in range(w.size):
+        tmp_val = w[idx]
+        w[idx] = float(tmp_val) + h
+        loss_w_plus_h = loss_f() # loss_f(w+h)
         
-        x[idx] = tmp_val - h 
-        fxh2 = f() # f(x-h)
-        grad[idx] = (fxh1 - fxh2) / (2*h)
+        w[idx] = tmp_val - h 
+        loss_w_minus_h = loss_f() # loss_f(x-h)
+        grad[idx] = (loss_w_plus_h - loss_w_minus_h) / (2*h)
         
-        x[idx] = tmp_val # 값 복원    
+        w[idx] = tmp_val # 값 복원    
     return grad
 
-def numerical_gradient_2d(f, X):
-    if X.ndim == 1:
-        return _numerical_gradient_1d(f, X)
+def numerical_gradient_2d(loss_f, W):
+    if W.ndim == 1:
+        return _numerical_gradient_1d(loss_f, W)
     else:
-        grad = np.zeros_like(X)
+        grad = np.zeros_like(W)
         
-        for idx, x in enumerate(X):
-            grad[idx] = _numerical_gradient_1d(f, x)        
+        for idx, w in enumerate(W):
+            grad[idx] = _numerical_gradient_1d(loss_f, w)
         return grad
 
-def gradient_descent(f, init_x, lr=0.01, step_num=100):
-    x = init_x
+def gradient_descent(loss_f, init_w, lr=0.01, step_num=100):
+    w = init_w
     for i in range(step_num):
-        grad = numerical_gradient(f, x)
-        x -= lr * grad
-    return x
+        grad = numerical_gradient(loss_f, w)
+        w -= lr * grad
+    return w
 
 # test_cross_entropy_error()
 def test_cross_entropy_error():
