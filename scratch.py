@@ -57,10 +57,10 @@ def _numerical_gradient_1d(f, x):
     for idx in range(x.size):
         tmp_val = x[idx]
         x[idx] = float(tmp_val) + h
-        fxh1 = f(x) # f(x+h)
+        fxh1 = f() # f(x+h)
         
         x[idx] = tmp_val - h 
-        fxh2 = f(x) # f(x-h)
+        fxh2 = f() # f(x-h)
         grad[idx] = (fxh1 - fxh2) / (2*h)
         
         x[idx] = tmp_val # 값 복원    
@@ -161,7 +161,7 @@ class TwoLayerNet:
         return accuracy
     
     def numerical_gradient(self, x, t):
-        loss_w = lambda w: self.loss(x, t)
+        loss_w = lambda: self.loss(x, t)
         
         grads = {}
         grads['w1'] = numerical_gradient_2d(loss_w, self.params['w1'])
