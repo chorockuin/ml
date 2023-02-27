@@ -237,9 +237,70 @@ def test_mini_batch():
     plt.legend(loc='lower right')
     plt.show()
 
+# test_backward()
+class MultiplyLayer:
+    def __init__(self):
+        self.xa = None
+        self.xb = None
+        
+    def forward(self, xa, xb):
+        self.xa = xa
+        self.xb = xb
+        y = xa * xb
+        return y
+    
+    def backward(self, y):
+        dxa = y * self.xb
+        dxb = y * self.xa
+        return dxa, dxb
+    
+class AddLayer:
+    def __init__(self):
+        self.xa = None
+        self.xb = None
+        
+    def forward(self, xa, xb):
+        y = xa + xb
+        return y
+    
+    def backward(self, y):
+        dxa = y * 1
+        dxb = y * 1
+        return dxa, dxb
+        
+def test_backward_apple():
+    apple = {'price': 100, 'quantity': 2, 'tax': 1.1}
+
+    layer1 = MultiplyLayer()
+    layer2 = MultiplyLayer()
+
+    y1 = layer1.forward(apple['price'], apple['quantity'])
+    print(y1)
+
+    # price가 변할 때 y1은 얼마나 변하나? quantity가 변할 때 y1은 얼마나 변하나?
+    # 왜 y1값을 1로 줄까? 얼마나 변하나?에 대한 기준 값이므로 1로 설정하면 1에 대한 비율을 할 수 있기 때문
+    d_price, d_quantity = layer1.backward(1)
+    # price가 변할 때 y1은 2씩 변하고, quantity가 변할 때 y1은 100씩 변한다
+    print(d_price, d_quantity)
+
+    y2 = layer2.forward(y1, apple['tax'])
+    print(y2)
+
+    # price * quantity가 변할 때 y2는 얼마나 변하나? tax가 변할 때 y2는 얼마나 변하나?
+    # 왜 y2값을 1로 줄까? 얼마나 변하나?에 대한 기준 값이므로 1로 설정하면 1에 대한 비율을 알 수 있기 때문
+    d_price_d_quantity, d_tax = layer2.backward(1)
+    # price * quantity가 변할 때 y2는 1.1씩 변하고, tax가 변할 때 y2는 200씩 변한다
+    print(d_price_d_quantity, d_tax)
+
+    # price가 변할 때 y2는 얼마나 변하나? quantity가 변할 때 y2는 얼마나 변하나?
+    d_price, d_quantity = layer1.backward(d_price_d_quantity)
+    # price가 변할 때 y2는 2.2씩 변하고 quantity가 변할 때 y2는 110씩 변한다
+    print(d_price, d_quantity)
+
 # test
 # print(softmax(np.array([9, 2, 1, 1, 4, 3, 2])))
 # test_cross_entropy_error()
 # test_forward()
 # test_two_layer_net()
-test_mini_batch()
+# test_mini_batch()
+test_backward_apple()
