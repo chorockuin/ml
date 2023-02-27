@@ -1,23 +1,30 @@
 import numpy as np
 # import tensorflow as tf
 
+# x: input
+# w: weight
+# b: bias
+# h: hidden
+# y: output
+# t: target
+
 # activation functions
-def sigmoid(x):
-    y = 1 / (1 + np.exp(-x))
+def sigmoid(h):
+    y = 1 / (1 + np.exp(-h))
     return y
 
-def relu(x):
-    y = np.maximum(0, x)
+def relu(h):
+    y = np.maximum(0, h)
     return y
 
-def softmax(x):
-    if x.ndim == 2:
-        x = x.T
-        x = x - np.max(x, axis=0) # 가로 방향으로 훑으면서 세로 값들 중에 제일 큰 값을 구함
-        y = np.exp(x) / np.sum(np.exp(x), axis=0) # 가로 방향으로 훑으면서 세로 값들의 합ㅇ르 구함
+def softmax(h):
+    if h.ndim == 2:
+        h = h.T
+        h = h - np.max(h, axis=0) # np.exp(x)가 너무 작으면 overflow가 발생함. np.exp(z-c)를 해도 결과는 같다는 것이 증명되었으므로, z-c를 써서 overflow를 방지함
+        y = np.exp(h) / np.sum(np.exp(h), axis=0) # 가로 방향으로 훑으면서 세로 값들의 합을 구함
         return y.T
-    x = x - np.max(x) # np.exp(x)가 너무 작으면 overflow가 발생함. np.exp(x-c)를 해도 결과는 같다는 것이 증명되었으므로, x-c를 써서 overflow를 방지함
-    y = np.exp(x) / np.sum(np.exp(x))
+    h = h - np.max(h) 
+    y = np.exp(h) / np.sum(np.exp(h))
     return y
 
 # loss functions
@@ -52,20 +59,20 @@ def CRE_batch_onehot_index(y, t): # 다차원, t 값 데이터가 one-hot encodi
 
 # gradient
 def _numerical_gradient_1d(loss_f, w): # 가중치에 따라 loss가 어떻게 변하는지 loss를 가중치에 따라 편미분
-    h = 1e-4 # 0.0001
+    min_c = 1e-4 # 0.0001
     grad = np.zeros_like(w)
     
     # loss_f 내부에는 이미 사용할 x값과 t값이 정해져있다. w만 변경(w+h, w-h)해서 넣으면 됨
-    for idx in range(w.size):
-        tmp_val = w[idx]
-        w[idx] = float(tmp_val) + h
-        loss_w_plus_h = loss_f() # loss_f(w+h)
+    for i in range(w.size):
+        tmp_val = w[i]
+        w[i] = float(tmp_val) + min_c
+        loss1 = loss_f() # loss_f(w + min_c) = 가중치에 min_c만큼 더한다음 x, t에 대해 loss값을 구함
         
-        w[idx] = tmp_val - h 
-        loss_w_minus_h = loss_f() # loss_f(x-h)
-        grad[idx] = (loss_w_plus_h - loss_w_minus_h) / (2*h)
+        w[i] = tmp_val - min_c 
+        loss2 = loss_f() # loss_f(x - min_c) = 가중치에서 min_c만큼 뺀다음 x, t에 대해 loss값을 구함
+        grad[i] = (loss1 - loss2) / (min_c * 2) # 가중치 변화(min_c * 2)에 따라 loss 값이 얼만큼 변하는지 기울기 구함
         
-        w[idx] = tmp_val # 값 복원    
+        w[i] = tmp_val # 값 복원
     return grad
 
 def numerical_gradient_2d(loss_f, W):
@@ -81,7 +88,7 @@ def numerical_gradient_2d(loss_f, W):
 def gradient_descent(loss_f, init_w, lr=0.01, step_num=100):
     w = init_w
     for i in range(step_num):
-        grad = numerical_gradient(loss_f, w)
+        grad = numerical_gradient_2d(loss_f, w)
         w -= lr * grad
     return w
 
@@ -117,12 +124,12 @@ def init_network():
     return network
 
 def forward(network, x): # ?x2
-    a1 = np.dot(x, network['w1']) + network['b1'] # ?x2 dot 2x3 + 1x3 = ?x3
-    z1 = sigmoid(a1) # ?x3
-    a2 = np.dot(z1, network['w2']) + network['b2'] # ?x3 dot 3x2 + 1x2 = ?x2
-    z2 = sigmoid(a2) # ?x2
-    a3 = np.dot(z2, network['w3']) + network['b3'] # ?x2 dot 2x2 + 1x2 = ?x2
-    y = softmax(a3)
+    h1 = np.dot(x, network['w1']) + network['b1'] # ?x2 dot 2x3 + 1x3 = ?x3
+    h2 = sigmoid(h1) # ?x3
+    h3 = np.dot(h2, network['w2']) + network['b2'] # ?x3 dot 3x2 + 1x2 = ?x2
+    h4 = sigmoid(h3) # ?x2
+    h5 = np.dot(h4, network['w3']) + network['b3'] # ?x2 dot 2x2 + 1x2 = ?x2
+    y = softmax(h5)
     return y
 
 def test_forward():
@@ -130,24 +137,24 @@ def test_forward():
     x = np.array([1.0, 0.5])
     y = forward(network, x)
     print(y)
-        
+    
 # test_two_layer_net()
 class TwoLayerNet:
-    def __init__(self, input_size, hidden_size, output_size, weight_init_std=0.01):
+    def __init__(self, x_size, h_size, y_size, w_init_std=0.01):
         self.params = {}
-        self.params['w1'] = weight_init_std * np.random.randn(input_size, hidden_size)
-        self.params['b1'] = weight_init_std * np.zeros(hidden_size)
-        self.params['w2'] = weight_init_std * np.random.randn(hidden_size, output_size)
-        self.params['b2'] = weight_init_std * np.zeros(output_size)
+        self.params['w1'] = w_init_std * np.random.randn(x_size, h_size)
+        self.params['b1'] = w_init_std * np.zeros(h_size)
+        self.params['w2'] = w_init_std * np.random.randn(h_size, y_size)
+        self.params['b2'] = w_init_std * np.zeros(y_size)
         
     def predict(self, x):
         w1, w2 = self.params['w1'], self.params['w2']
         b1, b2 = self.params['b1'], self.params['b2']
         
-        a1 = np.dot(x, w1) + b1
-        z1 = sigmoid(a1)
-        a2 = np.dot(z1, w2) + b2
-        y = softmax(a2)
+        h1 = np.dot(x, w1) + b1
+        h2 = sigmoid(h1)
+        h3 = np.dot(h2, w2) + b2
+        y = softmax(h3)
         return y
     
     def loss(self, x, t):
@@ -173,13 +180,12 @@ class TwoLayerNet:
         return grads
         
 def test_two_layer_net():
-    net = TwoLayerNet(input_size=784, hidden_size=100, output_size=10)
+    net = TwoLayerNet(x_size=784, h_size=100, y_size=10)
     x = np.random.rand(100, 784)
     t = np.random.rand(100, 10)
-
     y = net.predict(x)
     grads = net.numerical_gradient(x, t)
-    
+        
 # test_mini_batch()
 import load_mnist
 import matplotlib.pyplot as plt
@@ -191,7 +197,7 @@ def test_mini_batch():
     # x_test = (10000, 784)
     # t_train = (10000, 10)
 
-    net = TwoLayerNet(input_size=784, hidden_size=50, output_size=10)
+    net = TwoLayerNet(x_size=784, h_size=50, y_size=10)
 
     iters_num = 10000
     train_size = x_train.shape[0] # 60000
@@ -212,7 +218,7 @@ def test_mini_batch():
         grad = net.numerical_gradient(x_batch, t_batch) # 손실함수에 대해 가중치 편미분해서 기울기 얻음
         
         for k in ('w1', 'b1', 'w2', 'b2'):
-            net.params[k] -= learning_rate * grad[k] # 기울기 * 학습률 만큼 파라미터 업데이트
+            net.params[k] -= learning_rate * grad[k] # 기울기(파라미터 편미분 값들 모아놓은 matrix) * 학습률 만큼 파라미터 업데이트
 
         loss = net.loss(x_batch, t_batch) # loss 구함
         train_loss_list.append(loss)
@@ -241,33 +247,33 @@ def test_mini_batch():
 # test_backward_apple()
 class MultiplyLayer:
     def __init__(self):
-        self.xa = None
-        self.xb = None
+        self.x1 = None
+        self.x2 = None
         
-    def forward(self, xa, xb):
-        self.xa = xa
-        self.xb = xb
-        z = xa * xb
-        return z
+    def forward(self, x1, x2):
+        self.x1 = x1
+        self.x2 = x2
+        h = x1 * x2
+        return h
     
-    def backward(self, y):
-        dxa = y * self.xb
-        dxb = y * self.xa
-        return dxa, dxb
+    def backward(self, dh):
+        dx1 = dh * self.x2
+        dx2 = dh * self.x1
+        return dx1, dx2
     
 class AddLayer:
     def __init__(self):
-        self.xa = None
-        self.xb = None
+        self.x1 = None
+        self.x2 = None
         
-    def forward(self, xa, xb):
-        z = xa + xb
-        return z
+    def forward(self, x1, x2):
+        h = x1 + x2
+        return h
     
-    def backward(self, y):
-        dxa = y * 1
-        dxb = y * 1
-        return dxa, dxb
+    def backward(self, dh):
+        dx1 = dh * 1
+        dx2 = dh * 1
+        return dx1, dx2
     
 def test_backward_apple():
     apple = {'price': 100, 'quantity': 2, 'tax': 1.1}
@@ -275,27 +281,27 @@ def test_backward_apple():
     layer1 = MultiplyLayer()
     layer2 = MultiplyLayer()
 
-    y1 = layer1.forward(apple['price'], apple['quantity'])
-    print(y1)
+    h1 = layer1.forward(apple['price'], apple['quantity'])
+    print(h1)
 
-    # price가 변할 때 y1은 얼마나 변하나? quantity가 변할 때 y1은 얼마나 변하나?
-    # 왜 y1값을 1로 줄까? 얼마나 변하나?에 대한 기준 값이므로 1로 설정하면 1에 대한 비율을 할 수 있기 때문
+    # price가 변할 때 h1은 얼마나 변하나? quantity가 변할 때 h1은 얼마나 변하나?
+    # 왜 dh값을 1로 줄까? 얼마나 변하나?에 대한 기준 값이므로 1로 설정하면 1에 대한 비율을 알 수 있기 때문
     d_price, d_quantity = layer1.backward(1)
-    # price가 변할 때 y1은 2씩 변하고, quantity가 변할 때 y1은 100씩 변한다
+    # price가 변할 때 h1은 2씩 변하고, quantity가 변할 때 h1은 100씩 변한다
     print(d_price, d_quantity)
 
-    y2 = layer2.forward(y1, apple['tax'])
-    print(y2)
+    h2 = layer2.forward(h1, apple['tax'])
+    print(h2)
 
-    # price * quantity가 변할 때 y2는 얼마나 변하나? tax가 변할 때 y2는 얼마나 변하나?
-    # 왜 y2값을 1로 줄까? 얼마나 변하나?에 대한 기준 값이므로 1로 설정하면 1에 대한 비율을 알 수 있기 때문
+    # price * quantity가 변할 때 h2는 얼마나 변하나? tax가 변할 때 h2는 얼마나 변하나?
+    # 왜 h2값을 1로 줄까? 얼마나 변하나?에 대한 기준 값이므로 1로 설정하면 1에 대한 비율을 알 수 있기 때문
     d_price_d_quantity, d_tax = layer2.backward(1)
     # price * quantity가 변할 때 y2는 1.1씩 변하고, tax가 변할 때 y2는 200씩 변한다
     print(d_price_d_quantity, d_tax)
 
-    # price가 변할 때 y2는 얼마나 변하나? quantity가 변할 때 y2는 얼마나 변하나?
+    # 그렇다면 최종적으로 price가 변할 때 h2는 얼마나 변하나? quantity가 변할 때 h2는 얼마나 변하나?
     d_price, d_quantity = layer1.backward(d_price_d_quantity)
-    # price가 변할 때 y2는 2.2씩 변하고 quantity가 변할 때 y2는 110씩 변한다
+    # price가 변할 때 h2는 2.2씩 변하고 quantity가 변할 때 h2는 110씩 변한다
     print(d_price, d_quantity)
 
 # test_backward_activation()
@@ -303,51 +309,47 @@ class ReLU:
     def __init__(self):
         self.zero_mask = None
     
-    def forward(self, z):
+    def forward(self, h):
         # y가 np.array일 경우에만 가능한 연산
         # 0으로 mask되어야할 index를 true로 설정해 줌
-        self.zero_mask = (z <= 0)
-        z[self.zero_mask] = 0
-        y = z
-        return y
+        self.zero_mask = (h <= 0)
+        h[self.zero_mask] = 0
+        return h
     
-    def backward(self, y): # 여기서 y는 네트워크의 뒤 부터 쭉 이어져온 값. 따라서 그냥 곱해준다고 생각하면 됨
-        y[self.zero_mask] = 0
-        dy = y
-        return dy
+    def backward(self, dh): # 여기서 y는 네트워크의 뒤 부터 쭉 이어져온 값. 따라서 그냥 곱해준다고 생각하면 됨
+        dh[self.zero_mask] = 0
+        return dh
     
 class Sigmoid:
     def __init__(self):
         self.y = None
     
-    def forward(self, z):
-        y = 1 / (1 + np.exp(-z))
+    def forward(self, h):
+        y = 1 / (1 + np.exp(-h))
         self.y = y
         return y
     
-    def backward(self, y): 
-        dy = y * (1.0 - self.y) * self.y # 여기서 y는 네트워크의 뒤 부터 쭉 이어져온 값. 따라서 그냥 곱해준다고 생각하면 됨
-        return dy
+    def backward(self, dh): 
+        dh = dh * (1.0 - self.y) * self.y # 여기서 y는 네트워크의 뒤 부터 쭉 이어져온 값. 따라서 그냥 곱해준다고 생각하면 됨
+        return dh
 
 def test_backward_activation():
-    z = np.array([-3.2, 0.7, 0, -1.0, 4.3, 2.9])
-    print(f'tensor: {z}')
+    h = np.array([-3.2, 0.7, 0, -1.0, 4.3, 2.9])
+    print(f'tensor: {h}')
     
     relu = ReLU()
-    y = relu.forward(z)
+    y = relu.forward(h)
     print(f'relu-foward: {y}')
-    
     dy = relu.backward(y)
     print(f'relu-backward: {dy}')
     
     sigmoid = Sigmoid()
-    y = sigmoid.forward(z)
+    y = sigmoid.forward(h)
     print(f'sigmoid-forward: {y}')
-    
     dy = sigmoid.backward(y)
     print(f'sigmoid-backward: {dy}')
     
-    # y = tf.math.sigmoid(z)
+    # y = tf.math.sigmoid(h)
     # print(f'tf sigmoid-forward: {y}')
 
 # test_backward_affine()
@@ -361,16 +363,16 @@ class AffineLayer:
         
     def forward(self, x):
         self.x = x
-        z = np.dot(x, self.w) + self.b
-        return z
+        h = np.dot(x, self.w) + self.b
+        return h
     
-    def backward(self, z):
-        # w와 b에 대해서만 미분하면 되는데 왜 굳이 x에 대해 미분했을까?
-        dz = np.dot(z, self.w.T)
-        # w와 b에 대해서 미분하려면 x가 필요하기 때문이다. x에 대한 미분값이 다음 layer의 여기- z에 들어가기 때문이다
-        self.dw = np.dot(self.x.T, z)
-        self.db = np.sum(z, axis=0) # axis=0 은 column
-        return dz
+    def backward(self, dh):
+        # w와 b에 대해서만 미분하면 되는데 왜 굳이 h에 대해 미분했을까?
+        next_dh = np.dot(dh, self.w.T)
+        # w와 b에 대해서 미분하려면 dh가 필요하기 때문이다. h에 대한 미분값이 다음 layer의 여기 dh에 들어가기 때문이다
+        self.dw = np.dot(self.x.T, dh)
+        self.db = np.sum(dh, axis=0) # axis=0 은 column
+        return next_dh
     
 def test_backward_affine():
     w = np.array([[3.2, 1.1, -0.4], [-4.3, 0.9, 1.1]])
@@ -379,11 +381,11 @@ def test_backward_affine():
     print(w.shape, b.shape, x.shape)
     
     affine = AffineLayer(w, b)
-    z = affine.forward(x)
-    print(z.shape, z)
+    h = affine.forward(x)
+    print(h.shape, h)
     
-    dx = affine.backward(z)
-    print(dx.shape, dx)
+    dh = affine.backward(h)
+    print(dh.shape, dh)
 
 # test_backward()
 class SoftmaxWithLoss:
@@ -392,25 +394,25 @@ class SoftmaxWithLoss:
         self.y = None
         self.t = None
         
-    def forward(self, z, t):
+    def forward(self, y, t):
         self.t = t
-        self.y = softmax(z)
+        self.y = softmax(y)
         self.loss = cross_entropy_error(self.y, self.t)
         return self.loss
     
-    def backward(self, y):
+    def backward(self, dy=1):
         batch_size = self.t.shape[0]
-        dz = (self.y - self.t) / batch_size
-        return dz
+        dh = (self.y - self.t) / batch_size
+        return dh
 
 from collections import OrderedDict
 
 class LayerNet:
-    def __init__(self, x_size, z_size, y_size, weight_init_std=0.01):
+    def __init__(self, x_size, h_size, y_size, w_init_std=0.01):
         self.params = {}
-        self.params['w1'] = weight_init_std * np.random.randn(x_size, z_size)
-        self.params['b1'] = np.zeros(z_size)
-        self.params['w2'] = weight_init_std * np.random.randn(z_size, y_size)
+        self.params['w1'] = w_init_std * np.random.randn(x_size, h_size)
+        self.params['b1'] = np.zeros(h_size)
+        self.params['w2'] = w_init_std * np.random.randn(h_size, y_size)
         self.params['b2'] = np.zeros(y_size)
         
         self.layers = OrderedDict()
@@ -425,14 +427,14 @@ class LayerNet:
         return x
     
     def loss(self, x, t):
-        z = self.predict(x)
-        return self.last_layer.forward(z, t)
+        y = self.predict(x)
+        return self.last_layer.forward(y, t)
     
     def accuracy(self, x, t):
-        z = self.predict(x)
-        z = np.argmax(z, axis=1)
+        y = self.predict(x)
+        y = np.argmax(y, axis=1)
         if t.ndim != 1 : t = np.argmax(t, axis=1)
-        accuracy = np.sum(z == t) / float(x.shape[0])
+        accuracy = np.sum(y == t) / float(x.shape[0])
         return accuracy
     
     def numerical_gradient(self, x, t):
@@ -447,11 +449,11 @@ class LayerNet:
     
     def gradient(self, x, t):
         self.loss(x, t)
-        dy = self.last_layer.backward(1)
+        dh = self.last_layer.backward(1)
         layers = list(self.layers.values())
         layers.reverse()
         for layer in layers:
-            dy = layer.backward(dy)
+            dh = layer.backward(dh)
         grads = {}
         grads['w1'] = self.layers['affine1'].dw
         grads['b1'] = self.layers['affine1'].db
@@ -461,7 +463,7 @@ class LayerNet:
     
 def test_backward():
     (x_train, t_train), (x_test, t_test) = load_mnist.load_mnist(normalize=True, one_hot_label=True)
-    net = LayerNet(x_size=784, z_size=50, y_size=10)
+    net = LayerNet(x_size=784, h_size=50, y_size=10)
     
     x_batch = x_train[:3]
     t_batch = t_train[:3]
@@ -480,7 +482,7 @@ def test_layer_net():
     # x_test = (10000, 784)
     # t_train = (10000, 10)
 
-    net = LayerNet(x_size=784, z_size=50, y_size=10)
+    net = LayerNet(x_size=784, h_size=50, y_size=10)
 
     iters_num = 10000
     train_size = x_train.shape[0] # 60000
