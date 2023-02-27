@@ -328,7 +328,7 @@ class Sigmoid:
     def backward(self, y): 
         dy = y * (1.0 - self.y) * self.y # 여기서 y는 네트워크의 뒤 부터 쭉 이어져온 값. 따라서 그냥 곱해준다고 생각하면 됨
         return dy
-        
+
 def test_backward_activation():
     z = np.array([-3.2, 0.7, 0, -1.0, 4.3, 2.9])
     print(f'tensor: {z}')
@@ -349,7 +349,8 @@ def test_backward_activation():
     
     # y = tf.math.sigmoid(z)
     # print(f'tf sigmoid-forward: {y}')
-    
+
+# test_backward_affine()
 class AffineLayer:
     def __init__(self, w, b):
         self.w = w
@@ -364,10 +365,12 @@ class AffineLayer:
         return z
     
     def backward(self, z):
-        dx = np.dot(z, self.w.T)
+        # w와 b에 대해서만 미분하면 되는데 왜 굳이 x에 대해 미분했을까?
+        dz = np.dot(z, self.w.T)
+        # w와 b에 대해서 미분하려면 x가 필요하기 때문이다. x에 대한 미분값이 다음 layer의 여기- z에 들어가기 때문이다
         self.dw = np.dot(self.x.T, z)
         self.db = np.sum(z, axis=0) # axis=0 은 column
-        return dx
+        return dz
     
 def test_backward_affine():
     w = np.array([[3.2, 1.1, -0.4], [-4.3, 0.9, 1.1]])
@@ -381,7 +384,148 @@ def test_backward_affine():
     
     dx = affine.backward(z)
     print(dx.shape, dx)
+
+# test_backward()
+class SoftmaxWithLoss:
+    def __init__(self):
+        self.loss = None
+        self.y = None
+        self.t = None
+        
+    def forward(self, z, t):
+        self.t = t
+        self.y = softmax(z)
+        self.loss = cross_entropy_error(self.y, self.t)
+        return self.loss
     
+    def backward(self, y):
+        batch_size = self.t.shape[0]
+        dz = (self.y - self.t) / batch_size
+        return dz
+
+from collections import OrderedDict
+
+class LayerNet:
+    def __init__(self, x_size, z_size, y_size, weight_init_std=0.01):
+        self.params = {}
+        self.params['w1'] = weight_init_std * np.random.randn(x_size, z_size)
+        self.params['b1'] = np.zeros(z_size)
+        self.params['w2'] = weight_init_std * np.random.randn(z_size, y_size)
+        self.params['b2'] = np.zeros(y_size)
+        
+        self.layers = OrderedDict()
+        self.layers['affine1'] = AffineLayer(self.params['w1'], self.params['b1'])
+        self.layers['relu1'] = ReLU()
+        self.layers['affine2'] = AffineLayer(self.params['w2'], self.params['b2'])
+        self.last_layer = SoftmaxWithLoss()
+    
+    def predict(self, x):
+        for layer in self.layers.values():
+            x = layer.forward(x)
+        return x
+    
+    def loss(self, x, t):
+        z = self.predict(x)
+        return self.last_layer.forward(z, t)
+    
+    def accuracy(self, x, t):
+        z = self.predict(x)
+        z = np.argmax(z, axis=1)
+        if t.ndim != 1 : t = np.argmax(t, axis=1)
+        accuracy = np.sum(z == t) / float(x.shape[0])
+        return accuracy
+    
+    def numerical_gradient(self, x, t):
+        loss_w = lambda: self.loss(x, t)
+        
+        grads = {}
+        grads['w1'] = numerical_gradient_2d(loss_w, self.params['w1'])
+        grads['b1'] = numerical_gradient_2d(loss_w, self.params['b1'])
+        grads['w2'] = numerical_gradient_2d(loss_w, self.params['w2'])
+        grads['b2'] = numerical_gradient_2d(loss_w, self.params['b2'])
+        return grads
+    
+    def gradient(self, x, t):
+        self.loss(x, t)
+        dy = self.last_layer.backward(1)
+        layers = list(self.layers.values())
+        layers.reverse()
+        for layer in layers:
+            dy = layer.backward(dy)
+        grads = {}
+        grads['w1'] = self.layers['affine1'].dw
+        grads['b1'] = self.layers['affine1'].db
+        grads['w2'] = self.layers['affine2'].dw
+        grads['b2'] = self.layers['affine2'].db
+        return grads
+    
+def test_backward():
+    (x_train, t_train), (x_test, t_test) = load_mnist.load_mnist(normalize=True, one_hot_label=True)
+    net = LayerNet(x_size=784, z_size=50, y_size=10)
+    
+    x_batch = x_train[:3]
+    t_batch = t_train[:3]
+    
+    grad_numerical = net.numerical_gradient(x_batch, t_batch)
+    grad_backpropagation= net.gradient(x_batch, t_batch)
+    
+    for k in grad_numerical.keys():
+        diff = np.average(np.abs(grad_backpropagation[k] - grad_numerical[k]))
+        print(f'{k}: {diff}')
+        
+def test_layer_net():
+    (x_train, t_train), (x_test, t_test) = load_mnist.load_mnist(normalize=True, one_hot_label=True)
+    # x_train = (60000, 784)
+    # t_train = (60000, 10)
+    # x_test = (10000, 784)
+    # t_train = (10000, 10)
+
+    net = LayerNet(x_size=784, z_size=50, y_size=10)
+
+    iters_num = 10000
+    train_size = x_train.shape[0] # 60000
+    batch_size = 100
+    learning_rate = 0.1
+
+    train_loss_list = []
+    train_acc_list = []
+    test_acc_list = []
+
+    iter_per_epoch = max(train_size / batch_size, 1) # 1 epoch = 모든 데이터를 1회 학습
+
+    for i in range(iters_num):
+        batch_indexes = np.random.choice(train_size, batch_size) # 100 indexes
+        x_batch = x_train[batch_indexes] # 100
+        t_batch = t_train[batch_indexes] # 100
+        
+        grad = net.gradient(x_batch, t_batch) # 손실함수에 대해 가중치 편미분해서 기울기 얻음
+        
+        for k in ('w1', 'b1', 'w2', 'b2'):
+            net.params[k] -= learning_rate * grad[k] # 기울기 * 학습률 만큼 파라미터 업데이트
+
+        loss = net.loss(x_batch, t_batch) # loss 구함
+        train_loss_list.append(loss)
+        print(f'train_loss:{loss}')
+
+        if i % iter_per_epoch == 0:
+            train_acc = net.accuracy(x_train, t_train)
+            test_acc = net.accuracy(x_test, t_test)
+
+            train_acc_list.append(train_acc)
+            test_acc_list.append(test_acc)
+
+            print(f'batch_size:{batch_size}, iter:{i}, train acc:{train_acc} test acc:{test_acc}')
+
+    # 그래프 그리기
+    markers = {'train': 'o', 'test': 's'}
+    x = np.arange(len(train_acc_list))
+    plt.plot(x, train_acc_list, label='train acc')
+    plt.plot(x, test_acc_list, label='test acc', linestyle='--')
+    plt.xlabel("epochs")
+    plt.ylabel("accuracy")
+    plt.ylim(0, 1.0)
+    plt.legend(loc='lower right')
+    plt.show()
 # test
 # print(softmax(np.array([9, 2, 1, 1, 4, 3, 2])))
 # test_cross_entropy_error()
@@ -390,4 +534,6 @@ def test_backward_affine():
 # test_mini_batch()
 # test_backward_apple()
 # test_backward_activation()
-test_backward_affine()
+# test_backward_affine()
+# test_backward()
+test_layer_net()
