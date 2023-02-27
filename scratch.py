@@ -1,4 +1,5 @@
 import numpy as np
+# import tensorflow as tf
 
 # activation functions
 def sigmoid(x):
@@ -237,7 +238,7 @@ def test_mini_batch():
     plt.legend(loc='lower right')
     plt.show()
 
-# test_backward()
+# test_backward_apple()
 class MultiplyLayer:
     def __init__(self):
         self.xa = None
@@ -246,8 +247,8 @@ class MultiplyLayer:
     def forward(self, xa, xb):
         self.xa = xa
         self.xb = xb
-        y = xa * xb
-        return y
+        z = xa * xb
+        return z
     
     def backward(self, y):
         dxa = y * self.xb
@@ -260,14 +261,14 @@ class AddLayer:
         self.xb = None
         
     def forward(self, xa, xb):
-        y = xa + xb
-        return y
+        z = xa + xb
+        return z
     
     def backward(self, y):
         dxa = y * 1
         dxb = y * 1
         return dxa, dxb
-        
+    
 def test_backward_apple():
     apple = {'price': 100, 'quantity': 2, 'tax': 1.1}
 
@@ -297,10 +298,96 @@ def test_backward_apple():
     # price가 변할 때 y2는 2.2씩 변하고 quantity가 변할 때 y2는 110씩 변한다
     print(d_price, d_quantity)
 
+# test_backward_activation()
+class ReLU:
+    def __init__(self):
+        self.zero_mask = None
+    
+    def forward(self, z):
+        # y가 np.array일 경우에만 가능한 연산
+        # 0으로 mask되어야할 index를 true로 설정해 줌
+        self.zero_mask = (z <= 0)
+        z[self.zero_mask] = 0
+        y = z
+        return y
+    
+    def backward(self, y): # 여기서 y는 네트워크의 뒤 부터 쭉 이어져온 값. 따라서 그냥 곱해준다고 생각하면 됨
+        y[self.zero_mask] = 0
+        dy = y
+        return dy
+    
+class Sigmoid:
+    def __init__(self):
+        self.y = None
+    
+    def forward(self, z):
+        y = 1 / (1 + np.exp(-z))
+        self.y = y
+        return y
+    
+    def backward(self, y): 
+        dy = y * (1.0 - self.y) * self.y # 여기서 y는 네트워크의 뒤 부터 쭉 이어져온 값. 따라서 그냥 곱해준다고 생각하면 됨
+        return dy
+        
+def test_backward_activation():
+    z = np.array([-3.2, 0.7, 0, -1.0, 4.3, 2.9])
+    print(f'tensor: {z}')
+    
+    relu = ReLU()
+    y = relu.forward(z)
+    print(f'relu-foward: {y}')
+    
+    dy = relu.backward(y)
+    print(f'relu-backward: {dy}')
+    
+    sigmoid = Sigmoid()
+    y = sigmoid.forward(z)
+    print(f'sigmoid-forward: {y}')
+    
+    dy = sigmoid.backward(y)
+    print(f'sigmoid-backward: {dy}')
+    
+    # y = tf.math.sigmoid(z)
+    # print(f'tf sigmoid-forward: {y}')
+    
+class AffineLayer:
+    def __init__(self, w, b):
+        self.w = w
+        self.b = b
+        self.x = None
+        self.dw = None
+        self.db = None
+        
+    def forward(self, x):
+        self.x = x
+        z = np.dot(x, self.w) + self.b
+        return z
+    
+    def backward(self, z):
+        dx = np.dot(z, self.w.T)
+        self.dw = np.dot(self.x.T, z)
+        self.db = np.sum(z, axis=0) # axis=0 은 column
+        return dx
+    
+def test_backward_affine():
+    w = np.array([[3.2, 1.1, -0.4], [-4.3, 0.9, 1.1]])
+    b = np.array([1.0, -0.4, 0.4])
+    x = np.array([[2.2, 3.3], [-3.1, -2.2], [4.4, 9.1], [-1.1, 0.4]])
+    print(w.shape, b.shape, x.shape)
+    
+    affine = AffineLayer(w, b)
+    z = affine.forward(x)
+    print(z.shape, z)
+    
+    dx = affine.backward(z)
+    print(dx.shape, dx)
+    
 # test
 # print(softmax(np.array([9, 2, 1, 1, 4, 3, 2])))
 # test_cross_entropy_error()
 # test_forward()
 # test_two_layer_net()
 # test_mini_batch()
-test_backward_apple()
+# test_backward_apple()
+# test_backward_activation()
+test_backward_affine()
