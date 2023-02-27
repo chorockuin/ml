@@ -474,7 +474,47 @@ def test_backward():
     for k in grad_numerical.keys():
         diff = np.average(np.abs(grad_backpropagation[k] - grad_numerical[k]))
         print(f'{k}: {diff}')
+
+# test_layer_net()
+class SGD:
+    def __init__(self, lr=0.01):
+        self.lr = lr
         
+    def update(self, params, grads):
+        for k in params.keys():
+            params[k] -= self.lr * grads[k] # 기울기 * 학습률 만큼 파라미터 업데이트
+            
+class Momentum:
+    def __init__(self, lr=0.01, momentum=0.9):
+        self.lr = lr
+        self.momentum = momentum
+        self.v = None
+        
+    def update(self, params, grads):
+        if self.v is None:
+            self.v = {}
+            for k, v in params.items():
+                self.v[k] = np.zeros_like(v) # 파라미터 모양 그대로 0으로 초기화시킨 모멘텀 매트릭스 만들고
+        for k in params.keys():
+            # 모멘텀 매트릭스에 계속 업데이트할 가중치를 더한다
+            # 만약 같은 방향의 기울기(grads)가 계속 구해졌다면, 파라미터에 업데이트할 값(self.v)은 점점 더 커질 것이다
+            self.v[k] = self.momentum * self.v[k] - self.lr * grads[k]
+            params[k] += self.v[k]
+            
+class AdaGrad:
+    def __init__(self, lr=0.01):
+        self.lr = lr
+        self.h = None
+        
+    def update(self, params, grads):
+        if self.h is None:
+            self.h = {}
+            for k, v in params.items():
+                self.h[k] = np.zeros_like(v)
+        for k in params.keys():
+            self.h[k] += grads[k] * grads[k]
+            params[k] -= self.lr * grads[k] / (np.sqrt(self.h[k]) + 1e-7)
+
 def test_layer_net():
     (x_train, t_train), (x_test, t_test) = load_mnist.load_mnist(normalize=True, one_hot_label=True)
     # x_train = (60000, 784)
@@ -483,11 +523,13 @@ def test_layer_net():
     # t_train = (10000, 10)
 
     net = LayerNet(x_size=784, h_size=50, y_size=10)
+    # optimizer = SGD()
+    # optimizer = Momentum()
+    optimizer = AdaGrad()
 
     iters_num = 10000
     train_size = x_train.shape[0] # 60000
     batch_size = 100
-    learning_rate = 0.1
 
     train_loss_list = []
     train_acc_list = []
@@ -500,11 +542,10 @@ def test_layer_net():
         x_batch = x_train[batch_indexes] # 100
         t_batch = t_train[batch_indexes] # 100
         
-        grad = net.gradient(x_batch, t_batch) # 손실함수에 대해 가중치 편미분해서 기울기 얻음
+        grads = net.gradient(x_batch, t_batch) # 손실함수에 대해 가중치 편미분해서 기울기 얻음
+        params = net.params        
+        optimizer.update(params, grads)
         
-        for k in ('w1', 'b1', 'w2', 'b2'):
-            net.params[k] -= learning_rate * grad[k] # 기울기 * 학습률 만큼 파라미터 업데이트
-
         loss = net.loss(x_batch, t_batch) # loss 구함
         train_loss_list.append(loss)
         print(f'train_loss:{loss}')
@@ -528,6 +569,31 @@ def test_layer_net():
     plt.ylim(0, 1.0)
     plt.legend(loc='lower right')
     plt.show()
+    
+# test_activation_value_distribution()
+def test_activation_value_distribution():
+    x = np.random.randn(1000, 100)
+    node_num = 100
+    h_layer_num = 5
+    activations = {}
+    
+    for i in range(h_layer_num):
+        if i != 0:
+            x = activations[i-1]
+        w = np.random.randn(node_num, node_num) * 1
+        h = np.dot(x, w)
+        y = sigmoid(h)
+        activations[i] = y # 각 hidden layer마다 sigmoid 출력 값들의 분포를 한 번 봐보자
+        
+    # 그래프로 그려보면, 대부분의 값이 0 또는 1에 수렴하고 있음을 알게 됨
+    # sigmoid의 출력 값이 0 또는 1에 수렴하면 그 미분은 0에 수렴하기 때문에 결국 학습이 잘 되지 않는다
+    # 이러한 현상을 기울기 소실 현상이라고 함
+    for i, a in activations.items():
+        plt.subplot(1, len(activations), i+1)
+        plt.title(str(i+1) + '-layer')
+        plt.hist(a.flatten(), 30, range=(0, 1))
+    plt.show()
+    
 # test
 # print(softmax(np.array([9, 2, 1, 1, 4, 3, 2])))
 # test_cross_entropy_error()
@@ -538,4 +604,5 @@ def test_layer_net():
 # test_backward_activation()
 # test_backward_affine()
 # test_backward()
-test_layer_net()
+# test_layer_net()
+test_activation_value_distribution()
