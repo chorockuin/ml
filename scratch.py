@@ -371,21 +371,37 @@ class AffineLayer:
         next_dh = np.dot(dh, self.w.T)
         # w와 b에 대해서 미분하려면 dh가 필요하기 때문이다. h에 대한 미분값이 다음 layer의 여기 dh에 들어가기 때문이다
         self.dw = np.dot(self.x.T, dh)
+        print('dw:', self.dw.shape)
+        print(self.dw)
+        
         self.db = np.sum(dh, axis=0) # axis=0 은 column
+        print('db:', self.db.shape)
+        print(self.db)
+        
         return next_dh
     
 def test_backward_affine():
-    w = np.array([[3.2, 1.1, -0.4], [-4.3, 0.9, 1.1]])
-    b = np.array([1.0, -0.4, 0.4])
-    x = np.array([[2.2, 3.3], [-3.1, -2.2], [4.4, 9.1], [-1.1, 0.4]])
-    print(w.shape, b.shape, x.shape)
+    # x = np.array([[2.2, 3.3], [-3.1, -2.2], [4.4, 9.1], [-1.1, 0.4]])
+    # w = np.array([[3.2, 1.1, -0.4], [-4.3, 0.9, 1.1]])
+    # b = np.array([1.0, -0.4, 0.4])
+    x = np.array([[1,2],[3,4],[5,6],[7,8]])
+    w = np.array([[0,0,0],[1,1,1]])
+    b = np.array([2,2,2])
+    print('x:', x.shape)
+    print(x)
+    print('w:', w.shape)
+    print(w)
+    print('b:', b.shape)
+    print(b)
     
     affine = AffineLayer(w, b)
     h = affine.forward(x)
-    print(h.shape, h)
+    print('h:', h.shape)
+    print(h)
     
     dh = affine.backward(h)
-    print(dh.shape, dh)
+    print('dh:', dh.shape)
+    print(dh)
 
 # test_backward()
 class SoftmaxWithLoss:
@@ -602,7 +618,7 @@ def test_activation_value_distribution():
 # test_mini_batch()
 # test_backward_apple()
 # test_backward_activation()
-# test_backward_affine()
+test_backward_affine()
 # test_backward()
 # test_layer_net()
-test_activation_value_distribution()
+# test_activation_value_distribution()
