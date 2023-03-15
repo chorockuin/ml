@@ -366,22 +366,20 @@ class AffineLayer:
         h = np.dot(x, self.w) + self.b
         return h
     
-    def backward(self, y):
-        # 지금 단계의 y를 w에 대해 미분해서, 지금 단계에서 w에 대해 y가 얼만큼 변하는지 기울기를 구함
-        self.dydw = np.dot(self.x.T, y)
+    def backward(self, z):
+        # y를 w에 대해 미분해서, 지금 단계에서 w에 대해 y가 얼만큼 변하는지 기울기를 구함
+        self.dydw = np.dot(self.x.T, z)
         print('dy/dw:', self.dydw.shape)
         print(self.dydw)
         
-        # 지금 단계의 y를 b에 대해 미분해서, 지금 단계에서 b에 대해 y가 얼만큼 변하는지 기울기를 구함
-        self.dydb = np.dot(np.ones(y.shape[0]), y)
+        # y를 b에 대해 미분해서, 지금 단계에서 b에 대해 y가 얼만큼 변하는지 기울기를 구함
+        self.dydb = np.dot(np.ones(z.shape[0]), z)
         print('dy/db:', self.dydb.shape)
         print(self.dydb)
         
-        # dydw, dydb 값을 가지고 w와 b를 업데이트해야 하는 것이 학습. 그것은 뒤에서 다룸
-
         # y를 x에 대해 미분한 값을 다음 layer에 역전파의 입력값으로 전달함
-        dydx = np.dot(y, self.w.T)
-        return dydx
+        z = np.dot(z, self.w.T)
+        return z
     
 def test_backward_affine():
     # x = np.array([[2.2, 3.3], [-3.1, -2.2], [4.4, 9.1], [-1.1, 0.4]])
