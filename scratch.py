@@ -358,35 +358,38 @@ class AffineLayer:
         self.w = w
         self.b = b
         self.x = None
-        self.dw = None
-        self.db = None
+        self.dydw = None
+        self.dydb = None
         
     def forward(self, x):
         self.x = x
         h = np.dot(x, self.w) + self.b
         return h
     
-    def backward(self, dh):
-        # w와 b에 대해서만 미분하면 되는데 왜 굳이 h에 대해 미분했을까?
-        next_dh = np.dot(dh, self.w.T)
-        # w와 b에 대해서 미분하려면 dh가 필요하기 때문이다. h에 대한 미분값이 다음 layer의 여기 dh에 들어가기 때문이다
-        self.dw = np.dot(self.x.T, dh)
-        print('dw:', self.dw.shape)
-        print(self.dw)
+    def backward(self, y):
+        # 지금 단계의 y를 w에 대해 미분해서, 지금 단계에서 w에 대해 y가 얼만큼 변하는지 기울기를 구함
+        self.dydw = np.dot(self.x.T, y)
+        print('dy/dw:', self.dydw.shape)
+        print(self.dydw)
         
-        self.db = np.sum(dh, axis=0) # axis=0 은 column
-        print('db:', self.db.shape)
-        print(self.db)
+        # 지금 단계의 y를 b에 대해 미분해서, 지금 단계에서 b에 대해 y가 얼만큼 변하는지 기울기를 구함
+        self.dydb = np.dot(np.ones(y.shape[0]), y)
+        print('dy/db:', self.dydb.shape)
+        print(self.dydb)
         
-        return next_dh
+        # dydw, dydb 값을 가지고 w와 b를 업데이트해야 하는 것이 학습. 그것은 뒤에서 다룸
+
+        # y를 x에 대해 미분한 값을 다음 layer에 역전파의 입력값으로 전달함
+        dydx = np.dot(y, self.w.T)
+        return dydx
     
 def test_backward_affine():
     # x = np.array([[2.2, 3.3], [-3.1, -2.2], [4.4, 9.1], [-1.1, 0.4]])
     # w = np.array([[3.2, 1.1, -0.4], [-4.3, 0.9, 1.1]])
     # b = np.array([1.0, -0.4, 0.4])
-    x = np.array([[1,2],[3,4],[5,6],[7,8]])
-    w = np.array([[0,0,0],[1,1,1]])
-    b = np.array([2,2,2])
+    x = np.array([[1,2],[3,4],[5,6],[7,8]]) # 4 x 2
+    w = np.array([[0,0,0],[1,1,1]]) # 2 x 3
+    b = np.array([2,2,2]) # 1 x 3
     print('x:', x.shape)
     print(x)
     print('w:', w.shape)
@@ -395,13 +398,13 @@ def test_backward_affine():
     print(b)
     
     affine = AffineLayer(w, b)
-    h = affine.forward(x)
-    print('h:', h.shape)
-    print(h)
+    y = affine.forward(x)
+    print('y:', y.shape)
+    print(y)
     
-    dh = affine.backward(h)
-    print('dh:', dh.shape)
-    print(dh)
+    dydx = affine.backward(y)
+    print('dh:', dydx.shape)
+    print(dydx)
 
 # test_backward()
 class SoftmaxWithLoss:
